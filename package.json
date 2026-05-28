@@ -1,7 +1,13 @@
 {
-  "name": "applejs",
-  "module": "index.ts",
+  "name": "haxxor-js",
+  "version": "1.0.0",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "type": "module",
+  "scripts": {
+    "build": "bun build ./index.ts --outdir ./dist && bunx tsc --declaration --emitDeclarationOnly --outDir dist"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
