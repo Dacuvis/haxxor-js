@@ -4,6 +4,8 @@ import { Router } from "./router";
 export class Haxxor {
   router: Router;
 
+  private errorHandler: ((err: Error, ctx: any) => any) | null = null;
+
   constructor() {
     this.router = new Router();
   }
@@ -36,6 +38,28 @@ export class Haxxor {
   delete(path: string, handler: Function) {
     this.router.add("DELETE", path, handler);
     return this;
+  }
+
+  group(prefix: string, callback: (app: Haxxor) => void) {
+    const subApp = new Haxxor()
+
+    callback(subApp)
+
+    for(const route of subApp.router.routes) {
+      let combinePath = `${prefix}${route.path}`.replace(/\/+/g, "/");
+      if (combinePath.length > 1 && combinePath.endsWith("/")) {
+        combinePath = combinePath.slice(0, -1)
+      }
+
+      this.router.add(route.method, combinePath, route.handler)
+    }
+
+    return this
+  }
+
+  onError(handler: (err: Error, ctx: any) => any){
+    this.errorHandler = handler
+    return this
   }
 
   // Start the server
@@ -94,7 +118,19 @@ export class Haxxor {
             return ctx.json(result);
           }
         } catch (error) {
-          return ctx.status(500).text("Internal Server Error");
+          if (this.errorHandler) {
+            try {
+              const errResult = await this.errorHandler(error as Error, ctx)
+
+              if (errResult instanceof Response) return errResult
+              if (typeof errResult === "string") return ctx.text(errResult)
+              if (typeof errResult === "object") return ctx.json(errResult)
+            } catch (nestedError) {
+                return new Response("Internal Server Error", { status: 500 });
+            }
+          }
+
+          return ctx.status(500).text("Internal Server Error")
         }
       },
     });
